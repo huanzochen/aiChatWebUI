@@ -9,6 +9,20 @@
 </head>
 <body>
   <div class="chat-container">
+    <div class="chat-settings" style="padding: 12px; border-bottom: 1px solid #eee; background: #fafbfc; display: flex; gap: 8px; align-items: center;">
+      <input id="apiKeyInput" type="password" placeholder="OpenAI API Key" style="flex:1; min-width: 0; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px;">
+      <select id="modelSelect" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px;">
+        <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+        <option value="gpt-3.5-turbo-16k">gpt-3.5-turbo-16k</option>
+        <option value="gpt-3.5-turbo-0125">gpt-3.5-turbo-0125</option>
+        <option value="gpt-4">gpt-4</option>
+        <option value="gpt-4-32k">gpt-4-32k</option>
+        <option value="gpt-4-0125-preview">gpt-4-0125-preview</option>
+        <option value="gpt-4-turbo">gpt-4-turbo</option>
+        <option value="gpt-4o">gpt-4o</option>
+        <option value="gpt-4o-2024-05-13">gpt-4o-2024-05-13</option>
+      </select>
+    </div>
     <div class="chat-messages" id="chatMessages">
       <!-- Chat messages will be inserted here -->
     </div>
@@ -21,6 +35,11 @@
     const chatMessages = document.getElementById('chatMessages');
     const chatInput = document.getElementById('chatInput');
     const sendBtn = document.getElementById('sendBtn');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const modelSelect = document.getElementById('modelSelect');
+
+    // Store chat history for multi-turn conversation
+    const messages = [];
 
     // Auto resize textarea height
     chatInput.addEventListener('input', () => {
@@ -29,24 +48,64 @@
     });
 
     // Send message
-    function sendMessage() {
+    async function sendMessage() {
       const text = chatInput.value.trim();
       if (!text) return;
+
+      // Get API key and model
+      const apiKey = apiKeyInput.value.trim();
+      const model = modelSelect.value;
+
+      if (!apiKey) {
+        alert('Please enter your OpenAI API Key.');
+        return;
+      }
+
+      // Add user message to chat and history
       appendMessage(text, 'user');
+      messages.push({ role: 'user', content: text });
       chatInput.value = '';
       chatInput.style.height = 'auto';
 
-      // TODO: You can call the API here, send the text, and display the response
-      // Example: appendMessage('This is AI reply', 'ai');
+      // Show loading message
+      const loadingMsg = appendMessage('...', 'ai');
+
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + apiKey
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: messages
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('API Error: ' + response.status);
+        }
+
+        const data = await response.json();
+        const aiReply = data.choices?.[0]?.message?.content?.trim() || '[No response]';
+
+        // Remove loading message and show AI reply
+        loadingMsg.textContent = aiReply;
+        messages.push({ role: 'assistant', content: aiReply });
+      } catch (err) {
+        loadingMsg.textContent = '[Error] ' + err.message;
+      }
     }
 
-    // Append message to chat box
+    // Append message to chat box, returns the message div
     function appendMessage(text, role) {
       const msgDiv = document.createElement('div');
       msgDiv.className = 'chat-message' + (role === 'user' ? ' user' : '');
       msgDiv.textContent = text;
       chatMessages.appendChild(msgDiv);
       chatMessages.scrollTop = chatMessages.scrollHeight;
+      return msgDiv;
     }
 
     // Listen for send button click
