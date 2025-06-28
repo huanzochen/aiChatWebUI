@@ -4,6 +4,9 @@ const sendBtn = document.getElementById('sendBtn');
 const apiKeyInput = document.getElementById('apiKeyInput');
 const modelSelect = document.getElementById('modelSelect');
 
+// Flag to control auto scrolling behavior
+let autoScrollEnabled = true;
+
 // Store chat history for multi-turn conversation
 const messages = [];
 
@@ -43,6 +46,9 @@ chatInput.addEventListener('input', () => {
 async function sendMessage() {
   const text = chatInput.value.trim();
   if (!text) return;
+
+  // Enable auto scroll when user sends a new message
+  autoScrollEnabled = true;
 
   // Get API key and model
   const apiKey = apiKeyInput.value.trim();
@@ -103,6 +109,11 @@ async function sendMessage() {
     // Remove loading message and show AI reply
     loadingMsg.innerHTML = marked.parse(aiReply);
     messages.push({ role: 'assistant', content: aiReply });
+
+    // Scroll to bottom once after AI reply is appended
+    if (autoScrollEnabled) {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
   } catch (err) {
     loadingMsg.textContent = '[Error] ' + err.message;
   }
@@ -114,12 +125,27 @@ function appendMessage(text, role) {
   // Render markdown for both AI and user messages without sanitization
   msgDiv.innerHTML = marked.parse(text);
   chatMessages.appendChild(msgDiv);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+  if (autoScrollEnabled) {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
   return msgDiv;
 }
 
+  
 // Listen for send button click
 sendBtn.addEventListener('click', sendMessage);
+
+// Detect user scroll to disable auto scroll if user scrolls up
+chatMessages.addEventListener('scroll', () => {
+  const threshold = 20; // px from bottom to consider as bottom
+  const position = chatMessages.scrollTop + chatMessages.clientHeight;
+  const height = chatMessages.scrollHeight;
+  if (position < height - threshold) {
+    autoScrollEnabled = false;
+  } else {
+    autoScrollEnabled = true;
+  }
+});
 
 // Support sending on Enter (Shift+Enter for newline)
 let isComposing = false;
