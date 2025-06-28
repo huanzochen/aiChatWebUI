@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>ChatGPT UI Demo</title>
+  <meta name="viewport" content="width=900, initial-scale=1">
+  <link rel="stylesheet" href="global.css">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-messages" id="chatMessages">
+      <!-- 對話訊息會插入這裡 -->
+    </div>
+    <div class="chat-input-area">
+      <textarea id="chatInput" rows="1" placeholder="輸入訊息..."></textarea>
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+  <script>
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    // 自動調整 textarea 高度
+    chatInput.addEventListener('input', () => {
+      chatInput.style.height = 'auto';
+      chatInput.style.height = Math.min(chatInput.scrollHeight, 80) + 'px';
+    });
+
+    // 發送訊息
+    function sendMessage() {
+      const text = chatInput.value.trim();
+      if (!text) return;
+      appendMessage(text, 'user');
+      chatInput.value = '';
+      chatInput.style.height = 'auto';
+
+      // TODO: 這裡可串接 API，將 text 傳送出去，並顯示回應
+      // 範例：appendMessage('這裡是 AI 回覆', 'ai');
+    }
+
+    // 新增訊息到對話框
+    function appendMessage(text, role) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'chat-message' + (role === 'user' ? ' user' : '');
+      msgDiv.textContent = text;
+      chatMessages.appendChild(msgDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // 監聽 send button
+    sendBtn.addEventListener('click', sendMessage);
+
+    // 支援按下 Enter 送出（Shift+Enter 換行）
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  </script>
+</body>
+</html>
