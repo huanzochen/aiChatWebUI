@@ -12,15 +12,10 @@
     <div class="chat-settings" style="padding: 12px; border-bottom: 1px solid #eee; background: #fafbfc; display: flex; gap: 8px; align-items: center;">
       <input id="apiKeyInput" type="password" placeholder="OpenAI API Key" style="flex:1; min-width: 0; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px;">
       <select id="modelSelect" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px;">
-        <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-        <option value="gpt-3.5-turbo-16k">gpt-3.5-turbo-16k</option>
-        <option value="gpt-3.5-turbo-0125">gpt-3.5-turbo-0125</option>
-        <option value="gpt-4">gpt-4</option>
-        <option value="gpt-4-32k">gpt-4-32k</option>
-        <option value="gpt-4-0125-preview">gpt-4-0125-preview</option>
-        <option value="gpt-4-turbo">gpt-4-turbo</option>
-        <option value="gpt-4o">gpt-4o</option>
-        <option value="gpt-4o-2024-05-13">gpt-4o-2024-05-13</option>
+        <option value="gpt-4o">gpt 4o</option>
+        <option value="gpt-o3">gpt o3</option>
+        <option value="gpt-o3mini">gpt o3mini</option>
+        <option value="gpt-4.1">gpt 4.1</option>
       </select>
     </div>
     <div class="chat-messages" id="chatMessages">
@@ -64,6 +59,8 @@
       // Add user message to chat and history
       appendMessage(text, 'user');
       messages.push({ role: 'user', content: text });
+
+      // Clear input immediately after adding message and history
       chatInput.value = '';
       chatInput.style.height = 'auto';
 
@@ -112,8 +109,18 @@
     sendBtn.addEventListener('click', sendMessage);
 
     // Support sending on Enter (Shift+Enter for newline)
+    let isComposing = false;
+
+    chatInput.addEventListener('compositionstart', () => {
+      isComposing = true;
+    });
+
+    chatInput.addEventListener('compositionend', () => {
+      isComposing = false;
+    });
+
     chatInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
         e.preventDefault();
         sendMessage();
       }
