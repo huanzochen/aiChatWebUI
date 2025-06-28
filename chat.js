@@ -101,18 +101,18 @@ async function sendMessage() {
     const aiReply = data.choices?.[0]?.message?.content?.trim() || '[No response]';
 
     // Remove loading message and show AI reply
-    loadingMsg.textContent = aiReply;
+    loadingMsg.innerHTML = marked.parse(aiReply);
     messages.push({ role: 'assistant', content: aiReply });
   } catch (err) {
     loadingMsg.textContent = '[Error] ' + err.message;
   }
 }
 
-// Append message to chat box, returns the message div
 function appendMessage(text, role) {
   const msgDiv = document.createElement('div');
   msgDiv.className = 'chat-message' + (role === 'user' ? ' user' : '');
-  msgDiv.textContent = text;
+  // Render markdown for both AI and user messages without sanitization
+  msgDiv.innerHTML = marked.parse(text);
   chatMessages.appendChild(msgDiv);
   chatMessages.scrollTop = chatMessages.scrollHeight;
   return msgDiv;
