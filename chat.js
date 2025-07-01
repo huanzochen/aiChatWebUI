@@ -12,10 +12,129 @@ let autoScrollEnabled = true;
 // Store chat history for multi-turn conversation
 const messages = [];
 
+// Store all conversation histories loaded from backend
+let historyData = {};
+
+// Current conversation id
+let currentConversationId = null;
+
 // Load saved API key from localStorage if available
 const savedApiKey = localStorage.getItem('openai_api_key');
 if (savedApiKey) {
   apiKeyInput.value = savedApiKey;
+}
+
+// Generate a unique ID for conversation
+function generateId() {
+  return '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Load history from backend
+async function loadHistory() {
+  try {
+    const res = await fetch('http://localhost:3001/history');
+    if (res.ok) {
+      historyData = await res.json();
+    } else {
+      historyData = {};
+    }
+  } catch (err) {
+    console.error('Failed to load history:', err);
+    historyData = {};
+  }
+}
+
+// Save history to backend
+async function saveHistory() {
+  try {
+    await fetch('http://localhost:3001/history', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(historyData)
+    });
+  } catch (err) {
+    console.error('Failed to save history:', err);
+  }
+}
+
+// Create a new conversation history entry
+
+
+
+
+function createNewConversation() {
+  const id = generateId();
+  currentConversationId = id;
+  messages.length = 0; // clear current messages
+  chatMessages.innerHTML = ''; // clear UI messages
+  // Also update historyData to reflect new conversation (empty)
+  // but do not save to backend yet (only save on first user message)
+  historyData[id] = {
+    id,
+    createTime: new Date().toISOString(),
+    updateTime: new Date().toISOString(),
+    title: '',
+    content: []
+  };
+  // Render history list after updating historyData
+  renderHistoryList();
+
+  // Clear messages array as well to keep in sync
+  messages.length = 0;
+
+  // Also clear chatMessages UI to ensure no residual messages
+  chatMessages.innerHTML = '';
+}
+
+// Initialize history on page load
+
+
+loadHistory().then(() => {
+  renderHistoryList();
+  const newConvBtn = document.getElementById('newConversationBtn');
+  newConvBtn.addEventListener('click', () => {
+    createNewConversation();
+  });
+});
+
+// Render the history list in the UI
+function renderHistoryList() {
+  const historyListDiv = document.getElementById('historyList');
+  historyListDiv.innerHTML = '';
+
+  const entries = Object.values(historyData).sort((a, b) => new Date(b.updateTime) - new Date(a.updateTime));
+
+  entries.forEach(entry => {
+    const item = document.createElement('div');
+    item.style.padding = '6px';
+    item.style.borderBottom = '1px solid #eee';
+    item.style.cursor = 'pointer';
+    item.title = `Created: ${entry.createTime}\nUpdated: ${entry.updateTime}`;
+    item.textContent = entry.title || '(No Title)';
+
+    item.addEventListener('click', () => {
+      loadConversation(entry.id);
+    });
+
+    historyListDiv.appendChild(item);
+  });
+}
+
+// Load a conversation from history by id
+function loadConversation(id) {
+  const entry = historyData[id];
+  if (!entry) return;
+
+  currentConversationId = id;
+  messages.length = 0;
+  chatMessages.innerHTML = '';
+
+  entry.content.forEach(msg => {
+    appendMessage(msg.content, msg.role);
+    messages.push(msg);
+  });
 }
 
 // Sync systemPromptSelect and systemPromptTextarea
@@ -68,6 +187,34 @@ async function sendMessage() {
   appendMessage(text, 'user');
   messages.push({ role: 'user', content: text });
 
+  // On first user message, create new conversation in history if not exists
+  if (!currentConversationId) {
+    const id = generateId();
+    currentConversationId = id;
+    const now = new Date().toISOString();
+    historyData[id] = {
+      id,
+      createTime: now,
+      updateTime: now,
+      title: text.substring(0, 10),
+      content: [{ role: 'user', content: text }]
+    };
+      saveHistory();
+      renderHistoryList();
+    } else {
+      // Update history content and title
+      const historyEntry = historyData[currentConversationId];
+      if (historyEntry) {
+        historyEntry.content.push({ role: 'user', content: text });
+        historyEntry.updateTime = new Date().toISOString();
+        if (!historyEntry.title) {
+          historyEntry.title = text.substring(0, 10);
+        }
+        saveHistory();
+        renderHistoryList();
+      }
+    }
+
   chatInput.value = '';
   chatInput.style.height = 'auto';
 
@@ -96,6 +243,19 @@ async function sendMessage() {
     });
 
     messages.push({ role: 'assistant', content: aiReply });
+
+    // Update history content and title with AI reply
+    if (currentConversationId) {
+      const historyEntry = historyData[currentConversationId];
+      if (historyEntry) {
+        historyEntry.content.push({ role: 'assistant', content: aiReply });
+        historyEntry.updateTime = new Date().toISOString();
+        if (!historyEntry.title) {
+          historyEntry.title = aiReply.substring(0, 10);
+        }
+        saveHistory();
+      }
+    }
   } catch (err) {
     loadingMsg.textContent = '[Error] ' + err.message;
   }
